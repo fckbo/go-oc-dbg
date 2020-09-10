@@ -1422,6 +1422,9 @@ func parseCertificate(in *certificate) (*Certificate, error) {
 	out.Issuer.FillFromRDNSequence(&issuer)
 	out.Subject.FillFromRDNSequence(&subject)
 
+	fmt.Println(time.Now().Format(time.StampNano), " FB !!! crypto/x509/x509->parseCertificate: out.Subject=",out.Subject)
+	fmt.Println(time.Now().Format(time.StampNano), " FB !!! crypto/x509/x509->parseCertificate: out.Issuer=",out.Issuer)
+
 	out.NotBefore = in.TBSCertificate.Validity.NotBefore
 	out.NotAfter = in.TBSCertificate.Validity.NotAfter
 

@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 var debugDarwinRoots = strings.Contains(os.Getenv("GODEBUG"), "x509roots=1")
@@ -53,8 +54,10 @@ func (c *Certificate) systemVerify(opts *VerifyOptions) (chains [][]*Certificate
 //    whole process takes about 180 milliseconds with 1 untrusted root
 //    CA. (Compared to 110ms in the cgo path)
 func execSecurityRoots() (*CertPool, error) {
+    fmt.Println("FB !!! crypto/x509/root_darwin->execSecurityRoots")
 	hasPolicy, err := getCertsWithTrustPolicy()
 	if err != nil {
+        	fmt.Println("FB !!! crypto/x509/root_darwin - execSecurityRoots exit1")
 		return nil, err
 	}
 	if debugDarwinRoots {
@@ -66,6 +69,7 @@ func execSecurityRoots() (*CertPool, error) {
 	// Note that this results in trusting roots from $HOME/... (the environment
 	// variable), which might not be expected.
 	home, err := os.UserHomeDir()
+    fmt.Println("FB !!! crypto/x509/root_darwin - execSecurityRoots step1")
 	if err != nil {
 		if debugDarwinRoots {
 			fmt.Fprintf(os.Stderr, "crypto/x509: can't get user home directory: %v\n", err)
@@ -78,6 +82,8 @@ func execSecurityRoots() (*CertPool, error) {
 			filepath.Join(home, "/Library/Keychains/login.keychain-db"),
 		)
 	}
+
+	fmt.Println("FB !!! crypto/x509/root_darwin->execSecurityRoots - keychains=",keychains)
 
 	type rootCandidate struct {
 		c      *Certificate
@@ -102,48 +108,62 @@ func execSecurityRoots() (*CertPool, error) {
 	// tweaked their trust policy. These 4 goroutines are only
 	// defensive in the pathological case of many trust edits.
 	for i := 0; i < 4; i++ {
+        fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin - execSecurityRoots step2")
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for cert := range verifyCh {
+        		fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin - execSecurityRoots step3")
 				sha1CapHex := fmt.Sprintf("%X", sha1.Sum(cert.c.Raw))
 
 				var valid bool
 				verifyChecks := 0
 				if hasPolicy[sha1CapHex] {
+        			fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin - execSecurityRoots step4.0")
 					verifyChecks++
 					valid = verifyCertWithSystem(cert.c)
+        			fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin - execSecurityRoots step4.1")
 				} else {
 					// Certificates not in SystemRootCertificates without user
 					// or admin trust settings are not trusted.
+        			fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin - execSecurityRoots step5")
 					valid = cert.system
 				}
-
+        		fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin - execSecurityRoots step6.0")
 				mu.Lock()
 				numVerified += verifyChecks
 				if valid {
+        			fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin - execSecurityRoots step6.1")
 					roots.AddCert(cert.c)
 				}
 				mu.Unlock()
+        		fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin - execSecurityRoots step6.2")
 			}
 		}()
 	}
+    
+    fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin - execSecurityRoots step7")
 	err = forEachCertInKeychains(keychains, func(cert *Certificate) {
+        fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin - execSecurityRoots step8")
 		verifyCh <- rootCandidate{c: cert, system: false}
 	})
 	if err != nil {
+        fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin - execSecurityRoots exit2")
 		close(verifyCh)
 		return nil, err
 	}
 	err = forEachCertInKeychains([]string{
 		"/System/Library/Keychains/SystemRootCertificates.keychain",
 	}, func(cert *Certificate) {
+        fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin - execSecurityRoots step9")
 		verifyCh <- rootCandidate{c: cert, system: true}
 	})
 	if err != nil {
+        fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin - execSecurityRoots exit3")
 		close(verifyCh)
 		return nil, err
 	}
+    fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin - execSecurityRoots step10")
 	close(verifyCh)
 	wg.Wait()
 
@@ -151,11 +171,14 @@ func execSecurityRoots() (*CertPool, error) {
 		fmt.Fprintf(os.Stderr, "crypto/x509: ran security verify-cert %d times\n", numVerified)
 	}
 
+	fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin - execSecurityRoots crypto/x509: ran security verify-cert",numVerified)
+    fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin - execSecurityRoots normal exit")
 	return roots, nil
 }
 
 func forEachCertInKeychains(paths []string, f func(*Certificate)) error {
 	args := append([]string{"find-certificate", "-a", "-p"}, paths...)
+	fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin -> forEachCertInKeychains /usr/bin/security find-certificate -a -p",args)
 	cmd := exec.Command("/usr/bin/security", args...)
 	data, err := cmd.Output()
 	if err != nil {
@@ -180,38 +203,52 @@ func forEachCertInKeychains(paths []string, f func(*Certificate)) error {
 }
 
 func verifyCertWithSystem(cert *Certificate) bool {
+    fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin -> verifyCertWithSystem")
+
 	data := pem.EncodeToMemory(&pem.Block{
 		Type: "CERTIFICATE", Bytes: cert.Raw,
 	})
 
+   	fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin -> verifyCertWithSystem step 1")
 	f, err := ioutil.TempFile("", "cert")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "can't create temporary file for cert: %v", err)
+    	fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin -> verifyCertWithSystem exit 1")
 		return false
 	}
+   	fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin -> verifyCertWithSystem step 2")
 	defer os.Remove(f.Name())
 	if _, err := f.Write(data); err != nil {
 		fmt.Fprintf(os.Stderr, "can't write temporary file for cert: %v", err)
+    	fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin -> verifyCertWithSystem exit 2")
 		return false
 	}
+   	fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin -> verifyCertWithSystem step 3")
 	if err := f.Close(); err != nil {
 		fmt.Fprintf(os.Stderr, "can't write temporary file for cert: %v", err)
+    	fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin -> verifyCertWithSystem exit 3")
 		return false
 	}
+   	fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin -> verifyCertWithSystem step 4")
 	cmd := exec.Command("/usr/bin/security", "verify-cert", "-p", "ssl", "-c", f.Name(), "-l", "-L")
+	fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin -> verifyCertWithSystem step 5")
 	var stderr bytes.Buffer
 	if debugDarwinRoots {
 		cmd.Stderr = &stderr
 	}
+	fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin -> verifyCertWithSystem will Run shell cmd with: ",f.Name())
 	if err := cmd.Run(); err != nil {
 		if debugDarwinRoots {
 			fmt.Fprintf(os.Stderr, "crypto/x509: verify-cert rejected %s: %q\n", cert.Subject, bytes.TrimSpace(stderr.Bytes()))
 		}
+    	fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin -> verifyCertWithSystem ran shell cmd and exit with: ",f.Name())
 		return false
 	}
+	fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin -> verifyCertWithSystem ran shell cmd with success with: ",f.Name())
 	if debugDarwinRoots {
 		fmt.Fprintf(os.Stderr, "crypto/x509: verify-cert approved %s\n", cert.Subject)
 	}
+    fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root_darwin -> verifyCertWithSystem normal exit")
 	return true
 }
 

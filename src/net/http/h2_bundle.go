@@ -718,6 +718,7 @@ type http2clientConnPool struct {
 }
 
 func (p *http2clientConnPool) GetClientConn(req *Request, addr string) (*http2ClientConn, error) {
+	fmt.Println("FB !!! net/http/h2_bundle->http2cc.GetClientConn")
 	return p.getClientConn(req, addr, http2dialOnMiss)
 }
 
@@ -748,6 +749,7 @@ func (p *http2clientConnPool) shouldTraceGetConn(st http2clientConnIdleState) bo
 }
 
 func (p *http2clientConnPool) getClientConn(req *Request, addr string, dialOnMiss bool) (*http2ClientConn, error) {
+	fmt.Println("FB !!! net/http/h2_bundle->http2cc.getClientConn")
 	if http2isConnectionCloseRequest(req) && dialOnMiss {
 		// It gets its own connection.
 		http2traceGetConn(req, addr)
@@ -804,6 +806,7 @@ func (p *http2clientConnPool) getStartDialLocked(addr string) *http2dialCall {
 
 // run in its own goroutine.
 func (c *http2dialCall) dial(addr string) {
+	fmt.Println("FB !!! net/http/h2_bundle->dial")
 	const singleUse = false // shared conn
 	c.res, c.err = c.p.t.dialClientConn(addr, singleUse)
 	close(c.done)
@@ -952,6 +955,7 @@ func http2filterOutClientConn(in []*http2ClientConn, exclude *http2ClientConn) [
 type http2noDialClientConnPool struct{ *http2clientConnPool }
 
 func (p http2noDialClientConnPool) GetClientConn(req *Request, addr string) (*http2ClientConn, error) {
+	fmt.Println("FB !!! net/http/h2_bundle->http2noDialcc.GetClientConn")
 	return p.getClientConn(req, addr, http2noDialOnMiss)
 }
 
@@ -6920,12 +6924,14 @@ func http2authorityAddr(scheme string, authority string) (addr string) {
 
 // RoundTripOpt is like RoundTrip, but takes options.
 func (t *http2Transport) RoundTripOpt(req *Request, opt http2RoundTripOpt) (*Response, error) {
+	fmt.Println("FB !!! net/http/h2_bundle->t2.RoundTripOpt")
 	if !(req.URL.Scheme == "https" || (req.URL.Scheme == "http" && t.AllowHTTP)) {
 		return nil, errors.New("http2: unsupported scheme")
 	}
 
 	addr := http2authorityAddr(req.URL.Scheme, req.URL.Host)
 	for retry := 0; ; retry++ {
+		fmt.Println("FB !!! net/http/h2_bundle->t2.RoundTripOpt - for retry")
 		cc, err := t.connPool().GetClientConn(req, addr)
 		if err != nil {
 			t.vlogf("http2: Transport failed to get client conn for %s: %v", addr, err)
@@ -6934,6 +6940,7 @@ func (t *http2Transport) RoundTripOpt(req *Request, opt http2RoundTripOpt) (*Res
 		reused := !atomic.CompareAndSwapUint32(&cc.reused, 0, 1)
 		http2traceGotConn(req, cc, reused)
 		res, gotErrAfterReqBodyWrite, err := cc.roundTrip(req)
+	        fmt.Println("FB !!! http/h2_bundle->t2.RoundTripOpt-step1")
 		if err != nil && retry <= 6 {
 			if req, err = http2shouldRetryRequest(req, err, gotErrAfterReqBodyWrite); err == nil {
 				// After the first retry, do exponential backoff with 10% jitter.
@@ -7023,6 +7030,7 @@ func http2canRetryError(err error) bool {
 }
 
 func (t *http2Transport) dialClientConn(addr string, singleUse bool) (*http2ClientConn, error) {
+	fmt.Println("FB !!! http/h2_bundle->dialClientConn")
 	host, _, err := net.SplitHostPort(addr)
 	if err != nil {
 		return nil, err
@@ -7035,6 +7043,7 @@ func (t *http2Transport) dialClientConn(addr string, singleUse bool) (*http2Clie
 }
 
 func (t *http2Transport) newTLSConfig(host string) *tls.Config {
+	fmt.Println("FB !!! http/h2_bundle->newTLSConfig")
 	cfg := new(tls.Config)
 	if t.TLSClientConfig != nil {
 		*cfg = *t.TLSClientConfig.Clone()
@@ -7049,6 +7058,7 @@ func (t *http2Transport) newTLSConfig(host string) *tls.Config {
 }
 
 func (t *http2Transport) dialTLS() func(string, string, *tls.Config) (net.Conn, error) {
+	fmt.Println("FB !!! http/h2_bundle->dialTLS")
 	if t.DialTLS != nil {
 		return t.DialTLS
 	}
@@ -7056,6 +7066,7 @@ func (t *http2Transport) dialTLS() func(string, string, *tls.Config) (net.Conn, 
 }
 
 func (t *http2Transport) dialTLSDefault(network, addr string, cfg *tls.Config) (net.Conn, error) {
+	fmt.Println("FB !!! http/h2_bundle->dialTLSDefault")
 	cn, err := tls.Dial(network, addr, cfg)
 	if err != nil {
 		return nil, err
@@ -7445,11 +7456,13 @@ func http2actualContentLength(req *Request) int64 {
 }
 
 func (cc *http2ClientConn) RoundTrip(req *Request) (*Response, error) {
+	fmt.Println("FB !!! http/h2_bundle->cc.RoundTrip")
 	resp, _, err := cc.roundTrip(req)
 	return resp, err
 }
 
 func (cc *http2ClientConn) roundTrip(req *Request) (res *Response, gotErrAfterReqBodyWrite bool, err error) {
+	fmt.Println("FB !!! http/h2_bundle->cc.roundTrip")
 	if err := http2checkConnHeaders(req); err != nil {
 		return nil, false, err
 	}

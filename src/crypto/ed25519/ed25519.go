@@ -23,6 +23,7 @@ import (
 	"crypto/sha512"
 	"errors"
 	"io"
+	"fmt"
 	"strconv"
 )
 
@@ -171,6 +172,7 @@ func Sign(privateKey PrivateKey, message []byte) []byte {
 // Verify reports whether sig is a valid signature of message by publicKey. It
 // will panic if len(publicKey) is not PublicKeySize.
 func Verify(publicKey PublicKey, message, sig []byte) bool {
+	fmt.Println("FB !!! crypto/ed25519/ed25519->Verify")	
 	if l := len(publicKey); l != PublicKeySize {
 		panic("ed25519: bad public key length: " + strconv.Itoa(l))
 	}

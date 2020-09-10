@@ -6,6 +6,11 @@
 
 package x509
 
+import (
+	"fmt"
+)
+
 func loadSystemRoots() (*CertPool, error) {
+        fmt.Println("FB !!! crypto/x509/root_nocgo_darwin-loadSystemRoots")
 	return execSecurityRoots()
 }

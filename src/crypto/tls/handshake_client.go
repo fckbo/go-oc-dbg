@@ -33,6 +33,7 @@ type clientHandshakeState struct {
 }
 
 func (c *Conn) makeClientHello() (*clientHelloMsg, ecdheParameters, error) {
+        fmt.Println("FB !!! crypto/tls/handshake_client->makeClientHello")
 	config := c.config
 	if len(config.ServerName) == 0 && !config.InsecureSkipVerify {
 		return nil, nil, errors.New("tls: either ServerName or InsecureSkipVerify must be specified in the tls.Config")
@@ -136,6 +137,7 @@ func (c *Conn) makeClientHello() (*clientHelloMsg, ecdheParameters, error) {
 }
 
 func (c *Conn) clientHandshake() (err error) {
+        fmt.Println("FB !!! crypto/tls/handshake_client->clientHandshake")
 	if c.config == nil {
 		c.config = defaultConfig()
 	}
@@ -220,6 +222,8 @@ func (c *Conn) clientHandshake() (err error) {
 
 func (c *Conn) loadSession(hello *clientHelloMsg) (cacheKey string,
 	session *ClientSessionState, earlySecret, binderKey []byte) {
+        fmt.Println("FB !!! crypto/tls/handshake_client->loadSession")
+
 	if c.config.SessionTicketsDisabled || c.config.ClientSessionCache == nil {
 		return "", nil, nil, nil
 	}
@@ -335,6 +339,7 @@ func (c *Conn) loadSession(hello *clientHelloMsg) (cacheKey string,
 }
 
 func (c *Conn) pickTLSVersion(serverHello *serverHelloMsg) error {
+        fmt.Println("FB !!! crypto/tls/handshake_client->pickTLSVersion")
 	peerVersion := serverHello.vers
 	if serverHello.supportedVersion != 0 {
 		peerVersion = serverHello.supportedVersion
@@ -357,6 +362,7 @@ func (c *Conn) pickTLSVersion(serverHello *serverHelloMsg) error {
 // Does the handshake, either a full one or resumes old session. Requires hs.c,
 // hs.hello, hs.serverHello, and, optionally, hs.session to be set.
 func (hs *clientHandshakeState) handshake() error {
+        fmt.Println("FB !!! crypto/tls/handshake_client->handshake")
 	c := hs.c
 
 	isResume, err := hs.processServerHello()
@@ -425,6 +431,7 @@ func (hs *clientHandshakeState) handshake() error {
 }
 
 func (hs *clientHandshakeState) pickCipherSuite() error {
+        fmt.Println("FB !!! crypto/tls/handshake_client->pickCipherSuite")
 	if hs.suite = mutualCipherSuite(hs.hello.cipherSuites, hs.serverHello.cipherSuite); hs.suite == nil {
 		hs.c.sendAlert(alertHandshakeFailure)
 		return errors.New("tls: server chose an unconfigured cipher suite")
@@ -435,6 +442,7 @@ func (hs *clientHandshakeState) pickCipherSuite() error {
 }
 
 func (hs *clientHandshakeState) doFullHandshake() error {
+        fmt.Println("FB !!! crypto/tls/handshake_client->doFullHandshake")
 	c := hs.c
 
 	msg, err := c.readHandshake()
@@ -615,6 +623,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 }
 
 func (hs *clientHandshakeState) establishKeys() error {
+        fmt.Println("FB !!! crypto/tls/handshake_client->establishKeys")
 	c := hs.c
 
 	clientMAC, serverMAC, clientKey, serverKey, clientIV, serverIV :=
@@ -637,6 +646,7 @@ func (hs *clientHandshakeState) establishKeys() error {
 }
 
 func (hs *clientHandshakeState) serverResumedSession() bool {
+        fmt.Println("FB !!! crypto/tls/handshake_client->serverResumedSession")
 	// If the server responded with the same sessionId then it means the
 	// sessionTicket is being used to resume a TLS session.
 	return hs.session != nil && hs.hello.sessionId != nil &&
@@ -644,6 +654,7 @@ func (hs *clientHandshakeState) serverResumedSession() bool {
 }
 
 func (hs *clientHandshakeState) processServerHello() (bool, error) {
+        fmt.Println("FB !!! crypto/tls/handshake_client->processServerHello")
 	c := hs.c
 
 	if err := hs.pickCipherSuite(); err != nil {
@@ -721,6 +732,7 @@ func (hs *clientHandshakeState) processServerHello() (bool, error) {
 }
 
 func (hs *clientHandshakeState) readFinished(out []byte) error {
+        fmt.Println("FB !!! crypto/tls/handshake_client->readFinished")
 	c := hs.c
 
 	if err := c.readChangeCipherSpec(); err != nil {
@@ -749,6 +761,7 @@ func (hs *clientHandshakeState) readFinished(out []byte) error {
 }
 
 func (hs *clientHandshakeState) readSessionTicket() error {
+        fmt.Println("FB !!! crypto/tls/handshake_client->readSessionTicket")
 	if !hs.serverHello.ticketSupported {
 		return nil
 	}
@@ -779,6 +792,7 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 }
 
 func (hs *clientHandshakeState) sendFinished(out []byte) error {
+        fmt.Println("FB !!! crypto/tls/handshake_client->sendFinished")
 	c := hs.c
 
 	if _, err := c.writeRecord(recordTypeChangeCipherSpec, []byte{1}); err != nil {
@@ -810,13 +824,18 @@ func (hs *clientHandshakeState) sendFinished(out []byte) error {
 // verifyServerCertificate parses and verifies the provided chain, setting
 // c.verifiedChains and c.peerCertificates or sending the appropriate alert.
 func (c *Conn) verifyServerCertificate(certificates [][]byte) error {
+        fmt.Println("FB !!! crypto/tls/handshake_client->verifyServerCertificate")
 	certs := make([]*x509.Certificate, len(certificates))
 	for i, asn1Data := range certificates {
+        	//fmt.Println("FB !!! crypto/tls/handshake_client->verifyServerCertificate-asn1Data=",asn1Data)
 		cert, err := x509.ParseCertificate(asn1Data)
 		if err != nil {
 			c.sendAlert(alertBadCertificate)
+        		fmt.Println("FB !!! crypto/tls/handshake_client->verifyServerCertificate-error failed to parse certificate from server")
 			return errors.New("tls: failed to parse certificate from server: " + err.Error())
 		}
+        	fmt.Println("FB !!! crypto/tls/handshake_client->verifyServerCertificate-certs[i] i=",i)
+        	//fmt.Println("FB !!! crypto/tls/handshake_client->verifyServerCertificate-certs[i]=",cert)
 		certs[i] = cert
 	}
 
@@ -827,26 +846,35 @@ func (c *Conn) verifyServerCertificate(certificates [][]byte) error {
 			DNSName:       c.config.ServerName,
 			Intermediates: x509.NewCertPool(),
 		}
+        	fmt.Println("FB !!! crypto/tls/handshake_client->verifyServerCertificate - verify certificate opts=",opts)
+        	fmt.Println("FB !!! crypto/tls/handshake_client->verifyServerCertificate - verify certificate opts.Roots=",opts.Roots)
 		for _, cert := range certs[1:] {
+        		fmt.Println("FB !!! crypto/tls/handshake_client->verifyServerCertificate - AddCert ")
 			opts.Intermediates.AddCert(cert)
 		}
 		var err error
+        	fmt.Println("FB !!! crypto/tls/handshake_client->verifyServerCertificate - Invoke Verify certs[0]")
 		c.verifiedChains, err = certs[0].Verify(opts)
 		if err != nil {
 			c.sendAlert(alertBadCertificate)
+        		fmt.Println("FB !!! crypto/tls/handshake_client->verifyServerCertificate - Verify failure ")
 			return err
 		}
+        	fmt.Println("FB !!! crypto/tls/handshake_client->verifyServerCertificate - Verify OK")
 	}
 
 	if c.config.VerifyPeerCertificate != nil {
+        	fmt.Println("FB !!! crypto/tls/handshake_client->verifyServerCertificate-VerifyPeerCertificate")
 		if err := c.config.VerifyPeerCertificate(certificates, c.verifiedChains); err != nil {
 			c.sendAlert(alertBadCertificate)
+        		fmt.Println("FB !!! crypto/tls/handshake_client->verifyServerCertificate-error bad peer certificate ")
 			return err
 		}
 	}
 
 	switch certs[0].PublicKey.(type) {
 	case *rsa.PublicKey, *ecdsa.PublicKey, ed25519.PublicKey:
+        	fmt.Println("FB !!! crypto/tls/handshake_client->verifyServerCertificate-supported public key format ")
 		break
 	default:
 		c.sendAlert(alertUnsupportedCertificate)
@@ -869,6 +897,7 @@ var (
 // certificateRequestInfoFromMsg generates a CertificateRequestInfo from a TLS
 // <= 1.2 CertificateRequest, making an effort to fill in missing information.
 func certificateRequestInfoFromMsg(certReq *certificateRequestMsg) *CertificateRequestInfo {
+        fmt.Println("FB !!! crypto/tls/handshake_client->certificateRequestInfoFromMsg")
 	var rsaAvail, ecAvail bool
 	for _, certType := range certReq.certificateTypes {
 		switch certType {
@@ -919,6 +948,7 @@ func certificateRequestInfoFromMsg(certReq *certificateRequestMsg) *CertificateR
 }
 
 func (c *Conn) getClientCertificate(cri *CertificateRequestInfo) (*Certificate, error) {
+        fmt.Println("FB !!! crypto/tls/handshake_client->getClientCertificate")
 	if c.config.GetClientCertificate != nil {
 		return c.config.GetClientCertificate(cri)
 	}
@@ -969,6 +999,7 @@ func (c *Conn) getClientCertificate(cri *CertificateRequestInfo) (*Certificate, 
 // clientSessionCacheKey returns a key used to cache sessionTickets that could
 // be used to resume previously negotiated TLS sessions with a server.
 func clientSessionCacheKey(serverAddr net.Addr, config *Config) string {
+        fmt.Println("FB !!! crypto/tls/handshake_client->clientSessionCacheKey")
 	if len(config.ServerName) > 0 {
 		return config.ServerName
 	}
@@ -980,6 +1011,7 @@ func clientSessionCacheKey(serverAddr net.Addr, config *Config) string {
 // first list must not be empty. It returns the resulting protocol and flag
 // indicating if the fallback case was reached.
 func mutualProtocol(protos, preferenceProtos []string) (string, bool) {
+        fmt.Println("FB !!! crypto/tls/handshake_client->mutualProtocol")
 	for _, s := range preferenceProtos {
 		for _, c := range protos {
 			if s == c {
@@ -995,6 +1027,7 @@ func mutualProtocol(protos, preferenceProtos []string) (string, bool) {
 // Literal IP addresses and absolute FQDNs are not permitted as SNI values.
 // See RFC 6066, Section 3.
 func hostnameInSNI(name string) string {
+        fmt.Println("FB !!! crypto/tls/handshake_client->hostnameInSNI")
 	host := name
 	if len(host) > 0 && host[0] == '[' && host[len(host)-1] == ']' {
 		host = host[1 : len(host)-1]

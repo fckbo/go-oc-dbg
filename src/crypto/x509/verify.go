@@ -734,74 +734,104 @@ func (c *Certificate) isValid(certType int, currentChain []*Certificate, opts *V
 //
 // WARNING: this function doesn't do any revocation checking.
 func (c *Certificate) Verify(opts VerifyOptions) (chains [][]*Certificate, err error) {
+        fmt.Println("FB !!! crypto/x509/verify-Verify")
+        fmt.Println("FB !!! crypto/x509/verify-Verify opts=",opts)
 	// Platform-specific verification needs the ASN.1 contents so
 	// this makes the behavior consistent across platforms.
 	if len(c.Raw) == 0 {
+        	fmt.Println("FB !!! crypto/x509/verify-Verify exit 1")
 		return nil, errNotParsed
 	}
+        fmt.Println("FB !!! crypto/x509/verify-Verify step1")
 	if opts.Intermediates != nil {
+        	fmt.Println("FB !!! crypto/x509/verify-Verify step2")
 		for _, intermediate := range opts.Intermediates.certs {
+        		fmt.Println("FB !!! crypto/x509/verify-Verify step3")
 			if len(intermediate.Raw) == 0 {
+        			fmt.Println("FB !!! crypto/x509/verify-Verify exit 2")
 				return nil, errNotParsed
 			}
 		}
 	}
 
+        fmt.Println("FB !!! crypto/x509/verify-Verify step4")
 	// Use Windows's own verification and chain building.
 	if opts.Roots == nil && runtime.GOOS == "windows" {
+        	fmt.Println("FB !!! crypto/x509/verify-Verify invoke systemVerify")
 		return c.systemVerify(&opts)
 	}
 
+        fmt.Println("FB !!! crypto/x509/verify-Verify step5")
 	if opts.Roots == nil {
+        	fmt.Println("FB !!! crypto/x509/verify-Verify step6")
 		opts.Roots = systemRootsPool()
 		if opts.Roots == nil {
+        		fmt.Println("FB !!! crypto/x509/verify-Verify exit 3")
 			return nil, SystemRootsError{systemRootsErr}
 		}
 	}
 
+        fmt.Println("FB !!! crypto/x509/verify-Verify step7")
 	err = c.isValid(leafCertificate, nil, &opts)
 	if err != nil {
+        	fmt.Println("FB !!! crypto/x509/verify-Verify exit 4")
 		return
 	}
-
+        
+	fmt.Println("FB !!! crypto/x509/verify-Verify step8")
 	if len(opts.DNSName) > 0 {
 		err = c.VerifyHostname(opts.DNSName)
 		if err != nil {
+        		fmt.Println("FB !!! crypto/x509/verify-Verify exit 5")
 			return
 		}
 	}
 
+	fmt.Println("FB !!! crypto/x509/verify-Verify step9")
 	var candidateChains [][]*Certificate
 	if opts.Roots.contains(c) {
+        	fmt.Println("FB !!! crypto/x509/verify-Verify invoking append ")
 		candidateChains = append(candidateChains, []*Certificate{c})
 	} else {
+        	fmt.Println("FB !!! crypto/x509/verify-Verify invoking buildChains ")
 		if candidateChains, err = c.buildChains(nil, []*Certificate{c}, nil, &opts); err != nil {
+        		fmt.Println("FB !!! crypto/x509/verify-Verify exit 6 err=",err)
 			return nil, err
 		}
 	}
 
+	fmt.Println("FB !!! crypto/x509/verify-Verify step10")
 	keyUsages := opts.KeyUsages
 	if len(keyUsages) == 0 {
+		fmt.Println("FB !!! crypto/x509/verify-Verify step11")
 		keyUsages = []ExtKeyUsage{ExtKeyUsageServerAuth}
 	}
 
+	fmt.Println("FB !!! crypto/x509/verify-Verify step12")
 	// If any key usage is acceptable then we're done.
 	for _, usage := range keyUsages {
+		fmt.Println("FB !!! crypto/x509/verify-Verify step13")
 		if usage == ExtKeyUsageAny {
+        		fmt.Println("FB !!! crypto/x509/verify-Verify exit 7")
 			return candidateChains, nil
 		}
 	}
 
+	fmt.Println("FB !!! crypto/x509/verify-Verify step14")
 	for _, candidate := range candidateChains {
+		fmt.Println("FB !!! crypto/x509/verify-Verify step15")
 		if checkChainForKeyUsage(candidate, keyUsages) {
 			chains = append(chains, candidate)
 		}
 	}
 
+	fmt.Println("FB !!! crypto/x509/verify-Verify step16")
 	if len(chains) == 0 {
+        	fmt.Println("FB !!! crypto/x509/verify-Verify exit 8")
 		return nil, CertificateInvalidError{c, IncompatibleUsage, ""}
 	}
 
+        fmt.Println("FB !!! crypto/x509/verify-Verify normal exit ")
 	return chains, nil
 }
 
@@ -824,9 +854,15 @@ func (c *Certificate) buildChains(cache map[*Certificate][][]*Certificate, curre
 		hintCert *Certificate
 	)
 
+        fmt.Println("FB !!! crypto/x509/verify-buildChains")
+        fmt.Println("FB !!! crypto/x509/verify-cache=",cache)
+        fmt.Println("FB !!! crypto/x509/verify-currentChain=",currentChain)
+        fmt.Println("FB !!! crypto/x509/verify-opts=",opts)
 	considerCandidate := func(certType int, candidate *Certificate) {
+        	fmt.Println("FB !!! crypto/x509/verify-considerCandidate")
 		for _, cert := range currentChain {
 			if cert.Equal(candidate) {
+        			fmt.Println("FB !!! crypto/x509/verify-considerCandidate exit 1")
 				return
 			}
 		}
@@ -837,6 +873,7 @@ func (c *Certificate) buildChains(cache map[*Certificate][][]*Certificate, curre
 		*sigChecks++
 		if *sigChecks > maxChainSignatureChecks {
 			err = errors.New("x509: signature check attempts limit reached while verifying certificate chain")
+        		fmt.Println("FB !!! crypto/x509/verify-considerCandidate exit 2")
 			return
 		}
 
@@ -845,41 +882,55 @@ func (c *Certificate) buildChains(cache map[*Certificate][][]*Certificate, curre
 				hintErr = err
 				hintCert = candidate
 			}
+        		fmt.Println("FB !!! crypto/x509/verify-considerCandidate exit 3")
 			return
 		}
 
 		err = candidate.isValid(certType, currentChain, opts)
 		if err != nil {
+        		fmt.Println("FB !!! crypto/x509/verify-considerCandidate exit 4")
 			return
 		}
 
 		switch certType {
 		case rootCertificate:
 			chains = append(chains, appendToFreshChain(currentChain, candidate))
+        		fmt.Println("FB !!! crypto/x509/verify-considerCandidate case rootCertificate")
 		case intermediateCertificate:
+        		fmt.Println("FB !!! crypto/x509/verify-considerCandidate case rootCertificate or intermediateCertificate")
 			if cache == nil {
+        			fmt.Println("FB !!! crypto/x509/verify-considerCandidate create cache ")
 				cache = make(map[*Certificate][][]*Certificate)
 			}
 			childChains, ok := cache[candidate]
 			if !ok {
 				childChains, err = candidate.buildChains(cache, appendToFreshChain(currentChain, candidate), sigChecks, opts)
+        			fmt.Println("FB !!! crypto/x509/verify-considerCandidate child not ok")
 				cache[candidate] = childChains
 			}
 			chains = append(chains, childChains...)
 		}
 	}
-
+        
+	fmt.Println("FB !!! crypto/x509/verify-buildChains will loop on opts.Roots looking for PotentialParent err=",err)
 	for _, rootNum := range opts.Roots.findPotentialParents(c) {
+        	fmt.Println("FB !!! crypto/x509/verify-buildChains invoke considerCandidate root")
 		considerCandidate(rootCertificate, opts.Roots.certs[rootNum])
 	}
+	fmt.Println("FB !!! crypto/x509/verify-buildChains will loop on opts.Intermediates looking for Intermediate err=",err)
 	for _, intermediateNum := range opts.Intermediates.findPotentialParents(c) {
+        	fmt.Println("FB !!! crypto/x509/verify-buildChains invoke considerCandidate intermediate ")
 		considerCandidate(intermediateCertificate, opts.Intermediates.certs[intermediateNum])
 	}
 
+	fmt.Println("FB !!! crypto/x509/verify-buildChains chains=",chains) 
+	fmt.Println("FB !!! crypto/x509/verify-buildChains err=",err) 
 	if len(chains) > 0 {
+        	fmt.Println("FB !!! crypto/x509/verify-buildChains no error")
 		err = nil
 	}
 	if len(chains) == 0 && err == nil {
+        	fmt.Println("FB !!! crypto/x509/verify-buildChains major  error")
 		err = UnknownAuthorityError{c, hintErr, hintCert}
 	}
 

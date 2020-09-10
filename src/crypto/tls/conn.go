@@ -1345,6 +1345,7 @@ func (c *Conn) closeNotify() error {
 // Most uses of this package need not call Handshake
 // explicitly: the first Read or Write will call it automatically.
 func (c *Conn) Handshake() error {
+        fmt.Println("FB !!! crypto/tls/conn->Handshake")
 	c.handshakeMutex.Lock()
 	defer c.handshakeMutex.Unlock()
 

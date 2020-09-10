@@ -284,31 +284,42 @@ import (
 )
 
 func loadSystemRoots() (*CertPool, error) {
+        fmt.Println("FB !!! crypto/x509/root_cgo_darwin->loadSystemRoots")
 	var data, untrustedData C.CFDataRef
 	err := C.CopyPEMRoots(&data, &untrustedData, C.bool(debugDarwinRoots))
 	if err == -1 {
+        	fmt.Println("FB !!! crypto/x509/root_cgo_darwin-loadSystemRoots exit 1")
 		return nil, errors.New("crypto/x509: failed to load darwin system roots with cgo")
 	}
+        fmt.Println("FB !!! crypto/x509/root_cgo_darwin-loadSystemRoots step1")
 	defer C.CFRelease(C.CFTypeRef(data))
 	defer C.CFRelease(C.CFTypeRef(untrustedData))
 
+        fmt.Println("FB !!! crypto/x509/root_cgo_darwin-loadSystemRoots step2")
 	buf := C.GoBytes(unsafe.Pointer(C.CFDataGetBytePtr(data)), C.int(C.CFDataGetLength(data)))
 	roots := NewCertPool()
 	roots.AppendCertsFromPEM(buf)
 
+        fmt.Println("FB !!! crypto/x509/root_cgo_darwin-loadSystemRoots step3")
 	if C.CFDataGetLength(untrustedData) == 0 {
+        	fmt.Println("FB !!! crypto/x509/root_cgo_darwin-loadSystemRoots exit 2")
 		return roots, nil
 	}
 
+        fmt.Println("FB !!! crypto/x509/root_cgo_darwin-loadSystemRoots step4")
 	buf = C.GoBytes(unsafe.Pointer(C.CFDataGetBytePtr(untrustedData)), C.int(C.CFDataGetLength(untrustedData)))
 	untrustedRoots := NewCertPool()
 	untrustedRoots.AppendCertsFromPEM(buf)
 
+        fmt.Println("FB !!! crypto/x509/root_cgo_darwin-loadSystemRoots step5")
 	trustedRoots := NewCertPool()
 	for _, c := range roots.certs {
+        	fmt.Println("FB !!! crypto/x509/root_cgo_darwin-loadSystemRoots step6")
 		if !untrustedRoots.contains(c) {
+        		fmt.Println("FB !!! crypto/x509/root_cgo_darwin-loadSystemRoots step7")
 			trustedRoots.AddCert(c)
 		}
 	}
+        fmt.Println("FB !!! crypto/x509/root_cgo_darwin<-loadSystemRoots")
 	return trustedRoots, nil
 }

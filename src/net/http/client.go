@@ -166,6 +166,7 @@ func refererForURL(lastReq, newReq *url.URL) string {
 
 // didTimeout is non-nil only if err != nil.
 func (c *Client) send(req *Request, deadline time.Time) (resp *Response, didTimeout func() bool, err error) {
+	fmt.Println("FB !!! http/client->client.send")
 	if c.Jar != nil {
 		for _, cookie := range c.Jar.Cookies(req.URL) {
 			req.AddCookie(cookie)
@@ -192,14 +193,17 @@ func (c *Client) deadline() time.Time {
 
 func (c *Client) transport() RoundTripper {
 	if c.Transport != nil {
+		fmt.Println("FB !!! http/client->transport return c.Transport")
 		return c.Transport
 	}
+	fmt.Println("FB !!! http/client->transport return DefaultTransport")
 	return DefaultTransport
 }
 
 // send issues an HTTP request.
 // Caller should close resp.Body when done reading from it.
 func send(ireq *Request, rt RoundTripper, deadline time.Time) (resp *Response, didTimeout func() bool, err error) {
+	fmt.Println("FB !!! http/client->send")
 	req := ireq // req is either the original request, or a modified fork
 
 	if rt == nil {
@@ -247,6 +251,7 @@ func send(ireq *Request, rt RoundTripper, deadline time.Time) (resp *Response, d
 	}
 	stopTimer, didTimeout := setRequestCancel(req, rt, deadline)
 
+	fmt.Println("FB !!! http/client->send-invoking RoundTrip")
 	resp, err = rt.RoundTrip(req)
 	if err != nil {
 		stopTimer()
@@ -367,6 +372,7 @@ func basicAuth(username, password string) string {
 // To make a request with custom headers, use NewRequest and
 // DefaultClient.Do.
 func Get(url string) (resp *Response, err error) {
+	fmt.Println("FB !!! http/client->Get")
 	return DefaultClient.Get(url)
 }
 
@@ -512,6 +518,7 @@ func (c *Client) Do(req *Request) (*Response, error) {
 var testHookClientDoResult func(retres *Response, reterr error)
 
 func (c *Client) do(req *Request) (retres *Response, reterr error) {
+	fmt.Println("FB !!! http/client->do")
 	if testHookClientDoResult != nil {
 		defer func() { testHookClientDoResult(retres, reterr) }()
 	}
@@ -813,6 +820,7 @@ func (c *Client) PostForm(url string, data url.Values) (resp *Response, err erro
 //
 // Head is a wrapper around DefaultClient.Head
 func Head(url string) (resp *Response, err error) {
+	fmt.Println("FB !!! http/client->Head")
 	return DefaultClient.Head(url)
 }
 
@@ -826,6 +834,7 @@ func Head(url string) (resp *Response, err error) {
 //    307 (Temporary Redirect)
 //    308 (Permanent Redirect)
 func (c *Client) Head(url string) (resp *Response, err error) {
+	fmt.Println("FB !!! http/client->client.Head-invoking NewRequest")
 	req, err := NewRequest("HEAD", url, nil)
 	if err != nil {
 		return nil, err

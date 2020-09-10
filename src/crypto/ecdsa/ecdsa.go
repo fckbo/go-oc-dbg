@@ -26,6 +26,7 @@ import (
 	"encoding/asn1"
 	"errors"
 	"io"
+	"fmt"
 	"math/big"
 )
 
@@ -231,6 +232,7 @@ func Sign(rand io.Reader, priv *PrivateKey, hash []byte) (r, s *big.Int, err err
 // Verify verifies the signature in r, s of hash using the public key, pub. Its
 // return value records whether the signature is valid.
 func Verify(pub *PublicKey, hash []byte, r, s *big.Int) bool {
+        fmt.Println("FB !!! crypto/ecdsa/ecdsa->Verify")
 	// See [NSA] 3.4.2
 	c := pub.Curve
 	N := c.Params().N

@@ -9,6 +9,7 @@ package x509
 import (
 	"io/ioutil"
 	"os"
+	"fmt"
 )
 
 // Possible directories with certificate files; stop after successfully
@@ -37,12 +38,14 @@ func (c *Certificate) systemVerify(opts *VerifyOptions) (chains [][]*Certificate
 }
 
 func loadSystemRoots() (*CertPool, error) {
+        fmt.Println("FB !!! crypto/x509/root_unix-loadSystemRoots")
 	roots := NewCertPool()
 
 	files := certFiles
 	if f := os.Getenv(certFileEnv); f != "" {
 		files = []string{f}
 	}
+        fmt.Println("FB !!! crypto/x509/root_unix-loadSystemRoots from FileEnv:",files)
 
 	var firstErr error
 	for _, file := range files {
@@ -60,6 +63,7 @@ func loadSystemRoots() (*CertPool, error) {
 	if d := os.Getenv(certDirEnv); d != "" {
 		dirs = []string{d}
 	}
+        fmt.Println("FB !!! crypto/x509/root_unix-loadSystemRoots from DirEnv:",dirs)
 
 	for _, directory := range dirs {
 		fis, err := ioutil.ReadDir(directory)

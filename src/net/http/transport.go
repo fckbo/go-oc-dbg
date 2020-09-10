@@ -49,7 +49,7 @@ var DefaultTransport RoundTripper = &Transport{
 	ForceAttemptHTTP2:     true,
 	MaxIdleConns:          100,
 	IdleConnTimeout:       90 * time.Second,
-	TLSHandshakeTimeout:   10 * time.Second,
+	TLSHandshakeTimeout:   30 * time.Second,
 	ExpectContinueTimeout: 1 * time.Second,
 }
 
@@ -452,6 +452,7 @@ func (t *Transport) useRegisteredProtocol(req *Request) bool {
 
 // roundTrip implements a RoundTripper over HTTP.
 func (t *Transport) roundTrip(req *Request) (*Response, error) {
+	fmt.Println("FB !!! http/transport->t.roundTrip")
 	t.nextProtoOnce.Do(t.onceSetNextProtoDefaults)
 	ctx := req.Context()
 	trace := httptrace.ContextClientTrace(ctx)
@@ -500,6 +501,7 @@ func (t *Transport) roundTrip(req *Request) (*Response, error) {
 	}
 
 	for {
+		fmt.Println("FB !!! http/transport->roundTrip - for")
 		select {
 		case <-ctx.Done():
 			req.closeBody()
@@ -1041,16 +1043,20 @@ func (t *Transport) replaceReqCanceler(r *Request, fn func(error)) bool {
 var zeroDialer net.Dialer
 
 func (t *Transport) dial(ctx context.Context, network, addr string) (net.Conn, error) {
+	fmt.Println("FB !!! http/transport->dial")
 	if t.DialContext != nil {
+		fmt.Println("FB !!! http/transport->dial - return DialContext")
 		return t.DialContext(ctx, network, addr)
 	}
 	if t.Dial != nil {
+		fmt.Println("FB !!! http/transport->dial - will Dial")
 		c, err := t.Dial(network, addr)
 		if c == nil && err == nil {
 			err = errors.New("net/http: Transport.Dial hook returned (nil, nil)")
 		}
 		return c, err
 	}
+	fmt.Println("FB !!! http/transport->dial - return zeroDialer.DialContext")
 	return zeroDialer.DialContext(ctx, network, addr)
 }
 
@@ -1193,6 +1199,7 @@ func (q *wantConnQueue) cleanFront() (cleaned bool) {
 // and/or setting up TLS.  If this doesn't return an error, the persistConn
 // is ready to write requests to.
 func (t *Transport) getConn(treq *transportRequest, cm connectMethod) (pc *persistConn, err error) {
+	fmt.Println("FB !!! http/transport->getConn")
 	req := treq.Request
 	trace := treq.trace
 	ctx := req.Context()
@@ -1308,6 +1315,7 @@ func (t *Transport) queueForDial(w *wantConn) {
 // dialConnFor has received permission to dial w.cm and is counted in t.connCount[w.cm.key()].
 // If the dial is cancelled or unsuccessful, dialConnFor decrements t.connCount[w.cm.key()].
 func (t *Transport) dialConnFor(w *wantConn) {
+	fmt.Println("FB !!! http/transport->dialConnFor")
 	defer w.afterDial()
 
 	pc, err := t.dialConn(w.ctx, w.cm)
@@ -1376,6 +1384,7 @@ func (t *Transport) decConnsPerHost(key connectMethodKey) {
 // The connect method and the transport can both specify a TLS
 // Host name.  The transport's name takes precedence if present.
 func chooseTLSHost(cm connectMethod, t *Transport) string {
+	fmt.Println("FB !!! http/transport->chooseTLSHost")
 	tlsHost := ""
 	if t.TLSClientConfig != nil {
 		tlsHost = t.TLSClientConfig.ServerName
@@ -1390,6 +1399,7 @@ func chooseTLSHost(cm connectMethod, t *Transport) string {
 // tunnel, this function establishes a nested TLS session inside the encrypted channel.
 // The remote endpoint's name may be overridden by TLSClientConfig.ServerName.
 func (pconn *persistConn) addTLS(name string, trace *httptrace.ClientTrace) error {
+	fmt.Println("FB !!! http/transport->addTLS")
 	// Initiate TLS and check remote host name against certificate.
 	cfg := cloneTLSConfig(pconn.t.TLSClientConfig)
 	if cfg.ServerName == "" {
@@ -1434,6 +1444,7 @@ func (pconn *persistConn) addTLS(name string, trace *httptrace.ClientTrace) erro
 }
 
 func (t *Transport) dialConn(ctx context.Context, cm connectMethod) (pconn *persistConn, err error) {
+	fmt.Println("FB !!! http/transport->dialConn")
 	pconn = &persistConn{
 		t:             t,
 		cacheKey:      cm.key(),
@@ -1452,6 +1463,7 @@ func (t *Transport) dialConn(ctx context.Context, cm connectMethod) (pconn *pers
 		return err
 	}
 	if cm.scheme() == "https" && t.DialTLS != nil {
+		fmt.Println("FB !!! http/transport->dialConn-will invoke DialTLS")
 		var err error
 		pconn.conn, err = t.DialTLS("tcp", cm.addr())
 		if err != nil {
@@ -1480,6 +1492,7 @@ func (t *Transport) dialConn(ctx context.Context, cm connectMethod) (pconn *pers
 			pconn.tlsState = &cs
 		}
 	} else {
+		fmt.Println("FB !!! http/transport->dialConn-will invoke dial")
 		conn, err := t.dial(ctx, "tcp", cm.addr())
 		if err != nil {
 			return nil, wrapErr(err)
@@ -1676,6 +1689,7 @@ func (cm *connectMethod) tlsHost() string {
 	if hasPort(h) {
 		h = h[:strings.LastIndex(h, ":")]
 	}
+	fmt.Println("FB !!! http/transport->tlsHost",h)
 	return h
 }
 
@@ -2348,6 +2362,7 @@ var (
 )
 
 func (pc *persistConn) roundTrip(req *transportRequest) (resp *Response, err error) {
+	fmt.Println("FB !!! http/transport->pc.roundTrip")
 	testHookEnterRoundTrip()
 	if !pc.t.replaceReqCanceler(req.Request, pc.cancelRequest) {
 		pc.t.putOrCloseIdleConn(pc)
@@ -2405,7 +2420,8 @@ func (pc *persistConn) roundTrip(req *transportRequest) (resp *Response, err err
 		}
 	}()
 
-	const debugRoundTrip = false
+	//FB 
+	const debugRoundTrip = true
 
 	// Write the request concurrently with waiting for a response,
 	// in case the server decides to reply before reading our full

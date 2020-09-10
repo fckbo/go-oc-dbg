@@ -4,7 +4,11 @@
 
 package x509
 
-import "sync"
+import ( 
+	"sync"
+	"fmt"
+	"time"
+)
 
 var (
 	once           sync.Once
@@ -13,13 +17,18 @@ var (
 )
 
 func systemRootsPool() *CertPool {
+        fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root->systemRootsPool")
 	once.Do(initSystemRoots)
+        fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root<-systemRootsPool")
 	return systemRoots
 }
 
 func initSystemRoots() {
+        fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root->initSystemRoots")
 	systemRoots, systemRootsErr = loadSystemRoots()
 	if systemRootsErr != nil {
+        	fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root<-initSystemRoots to nil")
 		systemRoots = nil
 	}
+        fmt.Println(time.Now().Format(time.StampNano)," FB !!! crypto/x509/root<-initSystemRoots")
 }
